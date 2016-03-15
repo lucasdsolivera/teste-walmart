@@ -1,5 +1,7 @@
 package com.lucas;
 
+import java.io.IOException;
+
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.springframework.boot.SpringApplication;
@@ -22,7 +24,7 @@ public class TesteWalmartApplication extends Neo4jConfiguration {
 				.newEmbeddedDatabase("src/main/resources/baseNeo4jDB.db");
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		SpringApplication.run(TesteWalmartApplication.class, args);
 	}
 

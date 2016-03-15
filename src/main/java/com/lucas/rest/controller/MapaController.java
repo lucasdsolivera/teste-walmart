@@ -1,5 +1,7 @@
 package com.lucas.rest.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,10 +16,15 @@ import com.lucas.to.MapaTO;
 public class MapaController {
 	
 	@Autowired
-	private MapaRepository MapaRepository;
+	private MapaRepository mapaRepository;
 	
 	@RequestMapping(path="/mapas", method=RequestMethod.POST) 
 	public MapaTO salvarMapa(@RequestBody MapaTO mapaTO) {
-		return mapaTO;
+		return mapaRepository.cadastraMapa(mapaTO);
+	}
+	
+	@RequestMapping(path="/mapas", method=RequestMethod.GET)
+	public List<MapaTO> mapas() {
+		return mapaRepository.findAll();
 	}
 }
