@@ -1,6 +1,7 @@
 package com.lucas.builder;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 
 import org.neo4j.graphdb.Node;
@@ -30,7 +31,7 @@ public class RetornoConsultaTOBuilder {
 
 	public RetornoConsultaTOBuilder comValor(BigDecimal autonomia, BigDecimal valorLitro) {
 		BigDecimal valorFinal = new BigDecimal(retornoConsultaTO.getDistancia()).divide(autonomia).multiply(valorLitro);
-		retornoConsultaTO.setValor(valorFinal);
+		retornoConsultaTO.setValor(valorFinal.setScale(2, RoundingMode.HALF_EVEN));
 		return this;
 	}
 

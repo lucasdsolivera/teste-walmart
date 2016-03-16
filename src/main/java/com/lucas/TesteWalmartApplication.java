@@ -25,7 +25,6 @@ public class TesteWalmartApplication extends Neo4jConfiguration {
 	}
 	
 	public static void main(String[] args) throws IOException {
-//		FileUtils.deleteRecursively(new File("src/main/resources/baseNeo4jDB.db"));
 		SpringApplication.run(TesteWalmartApplication.class, args);
 	}
 

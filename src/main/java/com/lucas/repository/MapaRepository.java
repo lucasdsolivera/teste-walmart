@@ -13,6 +13,8 @@ public interface MapaRepository {
 	List<MapaTO> findAll();
 
 	MapaTO findMapaByName(String nomeMapa);
+	
+	void deletaMapaByName(String nomeMapa);
 
 	RetornoConsultaTO consultaMenorCaminho(ParametrosConsultaTO parametrosConsultaTO) throws Exception;
 	

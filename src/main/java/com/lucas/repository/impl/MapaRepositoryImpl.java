@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import javax.annotation.Resource;
-
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.WildcardQuery;
 import org.neo4j.graphalgo.GraphAlgoFactory;
@@ -21,7 +19,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.index.Index;
 import org.neo4j.graphdb.index.IndexHits;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.neo4j.core.GraphDatabase;
 import org.springframework.stereotype.Component;
 
 import com.lucas.builder.MapaTOBuilder;
@@ -37,21 +34,19 @@ public class MapaRepositoryImpl implements MapaRepository {
 
 	@Autowired
 	GraphDatabaseService graphDatabaseService;
-	
-	@Resource
-	GraphDatabase graphDatabase;
 
 	private boolean flagRelacionamento;
 		
 	@Override
 	public List<MapaTO> findAll() {
 		List<MapaTO> mapas =  new ArrayList<MapaTO>();
-		Transaction tx = graphDatabase.beginTx();
+		Transaction tx = graphDatabaseService.beginTx();
 		
 		Arrays.asList((graphDatabaseService.index().nodeIndexNames())).forEach(indexName -> {
 			IndexHits<Node> nodes = graphDatabaseService.index().forNodes(indexName).query(new WildcardQuery(new Term("nome", "*")));
 			mapas.add(new MapaTOBuilder().comNome(indexName).comRetas(nodes).build());
 		}); 
+		
 		tx.success();
 		tx.close();
 		return mapas;
@@ -59,8 +54,9 @@ public class MapaRepositoryImpl implements MapaRepository {
 	
 	@Override
 	public MapaTO cadastraMapa(MapaTO mapaTO) {
-		Transaction tx = graphDatabase.beginTx();
+		Transaction tx = graphDatabaseService.beginTx();
 		
+		graphDatabaseService.index().forNodes(mapaTO.getNome());
 		mapaTO.getRetas().forEach(r -> {
 			relacionaPontosNoMapa(r.getPontoOrigem(), r.getPontoDestino(), r.getDistancia(), mapaTO.getNome());	
 		});
@@ -105,7 +101,7 @@ public class MapaRepositoryImpl implements MapaRepository {
 
 	@Override
 	public MapaTO findMapaByName(String nomeMapa) {
-		Transaction tx = graphDatabase.beginTx();
+		Transaction tx = graphDatabaseService.beginTx();
 		IndexHits<Node> nodes = graphDatabaseService.index().forNodes(nomeMapa).query(new WildcardQuery(new Term("nome", "*")));
 		MapaTO mapaTO = new MapaTOBuilder().comNome(nomeMapa).comRetas(nodes).build();
 		tx.success();
@@ -116,7 +112,7 @@ public class MapaRepositoryImpl implements MapaRepository {
 
 	@Override
 	public RetornoConsultaTO consultaMenorCaminho(ParametrosConsultaTO parametrosConsultaTO) throws Exception {
-		Transaction tx = graphDatabase.beginTx();
+		Transaction tx = graphDatabaseService.beginTx();
 		
 		Node pontoOrigem = graphDatabaseService.index().forNodes(parametrosConsultaTO.getMapa()).get("nome", parametrosConsultaTO.getPontoOrigem()).getSingle();
 		Node pontoDestino = graphDatabaseService.index().forNodes(parametrosConsultaTO.getMapa()).get("nome", parametrosConsultaTO.getPontoDestino()).getSingle();
@@ -142,6 +138,14 @@ public class MapaRepositoryImpl implements MapaRepository {
 		tx.close();
 		
 		return retornoConsultaTO;
+	}
+
+	@Override
+	public void deletaMapaByName(String nomeMapa) {
+		Transaction tx = graphDatabaseService.beginTx();
+		graphDatabaseService.index().forNodes(nomeMapa).delete();
+		tx.success();
+		tx.close();
 	}
 
 }
