@@ -8,10 +8,14 @@ import javax.annotation.Resource;
 
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.WildcardQuery;
+import org.neo4j.graphalgo.GraphAlgoFactory;
+import org.neo4j.graphalgo.PathFinder;
+import org.neo4j.graphalgo.WeightedPath;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.DynamicRelationshipType;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.PathExpanders;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.index.Index;
@@ -21,8 +25,11 @@ import org.springframework.data.neo4j.core.GraphDatabase;
 import org.springframework.stereotype.Component;
 
 import com.lucas.builder.MapaTOBuilder;
+import com.lucas.builder.RetornoConsultaTOBuilder;
 import com.lucas.repository.MapaRepository;
 import com.lucas.to.MapaTO;
+import com.lucas.to.ParametrosConsultaTO;
+import com.lucas.to.RetornoConsultaTO;
 
 
 @Component
@@ -35,16 +42,14 @@ public class MapaRepositoryImpl implements MapaRepository {
 	GraphDatabase graphDatabase;
 
 	private boolean flagRelacionamento;
-	
+		
 	@Override
 	public List<MapaTO> findAll() {
 		List<MapaTO> mapas =  new ArrayList<MapaTO>();
 		Transaction tx = graphDatabase.beginTx();
 		
 		Arrays.asList((graphDatabaseService.index().nodeIndexNames())).forEach(indexName -> {
-			
 			IndexHits<Node> nodes = graphDatabaseService.index().forNodes(indexName).query(new WildcardQuery(new Term("nome", "*")));
-			
 			mapas.add(new MapaTOBuilder().comNome(indexName).comRetas(nodes).build());
 		}); 
 		tx.success();
@@ -70,8 +75,8 @@ public class MapaRepositoryImpl implements MapaRepository {
 		Node nodeDestino = criaPonto(pontoDestino, nomeMapa);
 		flagRelacionamento = false;
 		
-		nodeOrigem.getRelationships(Direction.OUTGOING).forEach(r-> {
-			if (r.getEndNode().equals(nodeDestino)) {
+		nodeOrigem.getRelationships(Direction.BOTH).forEach(r-> {
+			if (r.getEndNode().equals(nodeDestino) || r.getStartNode().equals(nodeDestino)) {
 				r.setProperty("distancia", distancia);
 				flagRelacionamento = true;
 			}
@@ -96,6 +101,47 @@ public class MapaRepositoryImpl implements MapaRepository {
 			indexService.add(node, "nome", nomePonto);
 		}
 		return node;
+	}
+
+	@Override
+	public MapaTO findMapaByName(String nomeMapa) {
+		Transaction tx = graphDatabase.beginTx();
+		IndexHits<Node> nodes = graphDatabaseService.index().forNodes(nomeMapa).query(new WildcardQuery(new Term("nome", "*")));
+		MapaTO mapaTO = new MapaTOBuilder().comNome(nomeMapa).comRetas(nodes).build();
+		tx.success();
+		tx.close();
+		
+		return mapaTO;
+	}
+
+	@Override
+	public RetornoConsultaTO consultaMenorCaminho(ParametrosConsultaTO parametrosConsultaTO) throws Exception {
+		Transaction tx = graphDatabase.beginTx();
+		
+		Node pontoOrigem = graphDatabaseService.index().forNodes(parametrosConsultaTO.getMapa()).get("nome", parametrosConsultaTO.getPontoOrigem()).getSingle();
+		Node pontoDestino = graphDatabaseService.index().forNodes(parametrosConsultaTO.getMapa()).get("nome", parametrosConsultaTO.getPontoDestino()).getSingle();
+		
+		if (pontoOrigem == null) {
+			throw new IllegalArgumentException("Origem não existe");
+		}
+		if (pontoDestino == null) {
+			throw new IllegalArgumentException("Destino não existe");
+		}
+		
+		PathFinder<WeightedPath> finder = GraphAlgoFactory.dijkstra(PathExpanders
+				.forTypeAndDirection(DynamicRelationshipType.withName("distancia"), Direction.BOTH),"distancia");
+
+		WeightedPath path = finder.findSinglePath(pontoOrigem, pontoDestino);
+		
+		RetornoConsultaTO retornoConsultaTO = new RetornoConsultaTOBuilder()
+					.comDistancia(path.weight())
+					.comPontos(path.nodes())
+					.comValor(parametrosConsultaTO.getAutonomia(), parametrosConsultaTO.getValorLitro())
+					.build();
+		tx.success();
+		tx.close();
+		
+		return retornoConsultaTO;
 	}
 
 }
