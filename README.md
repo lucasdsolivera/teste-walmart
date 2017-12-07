@@ -1,7 +1,7 @@
 # Teste Walmart - Entrega de Mercadorias - Lucas
 
 
-## Como configurar
+### Como configurar
 
 1. Baixe o projeto fazendo download do ZIP utilizando git clone:
 
